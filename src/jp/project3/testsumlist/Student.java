@@ -13,7 +13,6 @@ class Student {
 	private String name;//生徒氏名
 	public int[] scoreArray;//得点配列 教科の順番は呼び出し側に依存
 	private int sumRanking;//合計点順位
-	private boolean reTester;//再試験者フラグ trueは再試験
 	/**
 	 * 生徒情報を生成
 	 * @param name 生徒名
@@ -21,7 +20,6 @@ class Student {
 	public Student(String[] studentInfos) {
 		this.name = studentInfos[ZERO];
 		scoreArray = new int[studentInfos.length - ONE];
-		reTester = false;
 		int index1 = ZERO;
 		int index2 = ONE;
 		while(index2 < studentInfos.length) {
@@ -72,16 +70,13 @@ class Student {
 	 * @return 再試験の場合はtrue
 	 */
 	public boolean getReTestFlag(int failscore,int absence) {
-		for(int index = ZERO;index < scoreArray.length;index++) {
-			int wkScore = scoreArray[index];
-			if(wkScore <= failscore || wkScore == absence) {
-				return true;
-			}
-		}
-		return false;
+		return Arrays.stream(scoreArray).anyMatch(st -> st <= failscore || st == absence);
 	}
 	public int getSubjectSize() {
 		return scoreArray.length;
+	}
+	public int[] getSubjectScores(){
+		return scoreArray;
 	}
 	@Override
 	public String toString() {//テスト用

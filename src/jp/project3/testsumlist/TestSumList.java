@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -31,9 +31,6 @@ public class TestSumList {
 	 */
 	private static final String INFOREGIX = "^[^"+HALFCOMMA+"]+(" + HALFCOMMA +
 												"("+ABSENCE+"|[0-9]|[1-9][0-9]|100)){"+SUBJECTARRAY.length+"}$";
-
-
-
 	public static void main(String[] args) {
 		try {
 			List<String> scoreStList = Files.readAllLines(Path.of(FILEPATH), Charset.forName(CHARSET));//ファイルの読み込み
@@ -43,31 +40,21 @@ public class TestSumList {
 					.map(
 						st -> st.split(HALFCOMMA)//区切り文字で区切る
 					).map(Student::new).collect(Collectors.toList());
-			ArrayList<Student> failStudentList = new ArrayList<>();//再試験者のデータのリスト
-			ArrayList<Student> trueStudentList = new ArrayList<>();//合格者のリスト
+			List<Student> failStudentList;//再試験者のデータのリスト
+			List<Student> trueStudentList;//合格者のリスト
 			int[] subjectMaxScores = new int[SUBJECTARRAY.length];//教科の最高点 インデックスはSUBJECTARRAYと対応
 			int[] subjectMaxLen = new int[SUBJECTARRAY.length];//教科の最高点の桁数 同上
-			for(Student st : scoreStArList) {
-				if(st.getReTestFlag(FAILSCORE, ABSENCE)) {//赤点 or 欠席の時
-					failStudentList.add(st);
-				}else { //合格の時
-					trueStudentList.add(st);
-					for(int index = ZERO;index < SUBJECTARRAY.length;index++) {//教科最高点と最大桁数を調べる
-						if(subjectMaxScores[index] < st.getScore(index))
-							subjectMaxScores[index] = st.getScore(index);//最高点を上書き
-						if(subjectMaxLen[index] < String.valueOf(st.getScore(index)).length())
-							subjectMaxLen[index] = String.valueOf(st.getScore(index)).length();//最大桁数を上書き
-					}
+			failStudentList = scoreStArList.stream().filter(st -> st.getReTestFlag(FAILSCORE, ABSENCE)).collect(Collectors.toList());
+			trueStudentList = scoreStArList.stream().filter(st -> ! st.getReTestFlag(FAILSCORE, ABSENCE)).collect(Collectors.toList());
+			for(Student st : trueStudentList) {//合格の時
+				for(int index = ZERO;index < SUBJECTARRAY.length;index++) {//教科最高点と最大桁数を調べる
+					subjectMaxScores[index] = Integer.max(subjectMaxScores[index], st.getScore(index));
+					subjectMaxLen[index] = Integer.max(subjectMaxLen[index], String.valueOf(st.getScore(index)).length());
 				}
 			}
 			if(trueStudentList.size() > ZERO) { //合格者がいるとき
-				trueStudentList = trueStudentList.stream() //合格者のリスト
-						.sorted((x,y) -> Integer.compare(y.getSumScore(), x.getSumScore())
-								)//合計点で降順にソート
-						.collect(Collectors.toCollection(ArrayList::new));
-
-				int rankingMaxLen = (int)trueStudentList.stream().mapToInt(st -> st.getSumScore()).count();
-				rankingMaxLen = String.valueOf(rankingMaxLen).length();
+				trueStudentList.sort(Comparator.comparingInt(Student::getSumScore).reversed().thenComparing(Student::getName));
+				int rankingMaxLen = String.valueOf(trueStudentList.stream().mapToInt(st -> st.getSumScore()).count()).length();
 				//順位の最大桁数を求める
 				int nameMaxLen = trueStudentList.stream().mapToInt(st -> st.getName().length()).max().orElse(ZERO);
 				//氏名の最大文字列長を求める
@@ -76,11 +63,13 @@ public class TestSumList {
 				Student tmpSt = trueStudentList.get(ZERO);
 				for(Student st : trueStudentList) {
 					if(tmpSt.getSumScore() > st.getSumScore()) tmpRank++;//前の人より点が低い場合は順位を加算
-					System.out.printf(DIGIT1 + rankingMaxLen +DIGIT2, tmpRank);//ランキングを表示
-					System.out.print(FULLSPACE);
 					int tmpLen = (nameMaxLen - st.getName().length()) * 2 + st.getName().length();
 					//この生徒の名前の文字数半角スペースをいくつ足せば最大文字列長と等しくなるか
-					System.out.printf(DIGIT3 + tmpLen +DIGIT4, st.getName());
+					String tmpStr = String.join(FULLSPACE,
+							String.format(DIGIT1 + rankingMaxLen +DIGIT2, tmpRank),
+							String.format(DIGIT3 + tmpLen +DIGIT4, st.getName()));
+					//String.join(delimiter, elements);
+					System.out.print(tmpStr);
 					for(int index = ZERO;index < SUBJECTARRAY.length;index++) {
 						String wkMark = HALFSPACE;//付与するマークを一時的に保存する変数
 						System.out.print(FULLSPACE);
@@ -100,11 +89,6 @@ public class TestSumList {
 			}else {
 				failStudentList.forEach(st -> System.out.println(st.getName()));
 			}
-
-
-
-
-
 		}catch (IOException e) {
 			e.printStackTrace();
 			System.exit(ABNORMAL);
