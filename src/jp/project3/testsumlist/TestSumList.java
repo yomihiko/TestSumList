@@ -6,15 +6,18 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class TestSumList {
 	private static final int FAILSCORE = 25;//赤点
 	private static final int ABSENCE = -1;//欠席を表す数値
-	private static final String FILEPATH = "bin/scorelist.txt";//成績ファイルのパス
-	private static final String CHARSET = "UTF-8";//成績ファイルの文字コード
+	private static final int SUBJECTNUM = 3;//教科数
+	private static final String FILEPATH = "bin/testsum2.txt";//成績ファイルのパス
+	private static final String CHARSET = "MS932";//成績ファイルの文字コード
 	private static final String HALFCOMMA = ",";//成績ファイルの区切り文字
 	private static final String HIGHSCOREMARK = "*";//教科最高点取得者を表す印
 	private static final String HALFSPACE = " ";//半角空白
@@ -23,75 +26,90 @@ public class TestSumList {
 	private static final String DIGIT2 = "d";//桁揃え用
 	private static final String DIGIT3 = "%1$-";//文字列揃え用
 	private static final String DIGIT4 = "s";//文字列揃え用
-	private static final String[] SUBJECTARRAY = {"国語","数学","英語"};//教科
-	private static final String LABEL1 = "【試験成績順位】";
-	private static final String LABEL2 = "【再試験者】";
+	private static final String LABEL1 = "【試験成績順位】";//表示用
+	private static final String LABEL2 = "【再試験者】";//表示用
+	private static final String LABEL3 = "該当者なし";//表示用
 	/**
 	 * INFOREGIX 不正データを排除する正規表現 得点の範囲も正規表現で表す
 	 */
 	private static final String INFOREGIX = "^[^"+HALFCOMMA+"]+(" + HALFCOMMA +
-												"("+ABSENCE+"|[0-9]|[1-9][0-9]|100)){"+SUBJECTARRAY.length+"}$";
+												"("+ABSENCE+"|[0-9]|[1-9][0-9]|100)){"+SUBJECTNUM+"}$";
 	public static void main(String[] args) {
-		try {
-			List<String> scoreStList = Files.readAllLines(Path.of(FILEPATH), Charset.forName(CHARSET));//ファイルの読み込み
-			List<Student> scoreStArList = scoreStList.stream()
+		List<Student> scoreStArList = List.of();
+		try(Stream<String> tmpSt = Files.lines(Path.of(FILEPATH), Charset.forName(CHARSET))) {
+			scoreStArList = tmpSt
 					.filter(
 							st -> st.matches(INFOREGIX)) //不正データを除去
 					.map(
 						st -> st.split(HALFCOMMA)//区切り文字で区切る
 					).map(Student::new).collect(Collectors.toList());
-			List<Student> failStudentList;//再試験者のデータのリスト
-			List<Student> trueStudentList;//合格者のリスト
-			int[] subjectMaxScores = new int[SUBJECTARRAY.length];//教科の最高点 インデックスはSUBJECTARRAYと対応
-			int[] subjectMaxLen = new int[SUBJECTARRAY.length];//教科の最高点の桁数 同上
-			failStudentList = scoreStArList.stream().filter(st -> st.getReTestFlag(FAILSCORE, ABSENCE)).collect(Collectors.toList());
-			trueStudentList = scoreStArList.stream().filter(st -> ! st.getReTestFlag(FAILSCORE, ABSENCE)).collect(Collectors.toList());
-			for(Student st : trueStudentList) {//合格の時
-				for(int index = ZERO;index < SUBJECTARRAY.length;index++) {//教科最高点と最大桁数を調べる
-					subjectMaxScores[index] = Integer.max(subjectMaxScores[index], st.getScore(index));
-					subjectMaxLen[index] = Integer.max(subjectMaxLen[index], String.valueOf(st.getScore(index)).length());
-				}
-			}
-			if(trueStudentList.size() > ZERO) { //合格者がいるとき
-				trueStudentList.sort(Comparator.comparingInt(Student::getSumScore).reversed().thenComparing(Student::getName));
-				int rankingMaxLen = String.valueOf(trueStudentList.stream().mapToInt(st -> st.getSumScore()).count()).length();
-				//順位の最大桁数を求める
-				int nameMaxLen = trueStudentList.stream().mapToInt(st -> st.getName().length()).max().orElse(ZERO);
-				//氏名の最大文字列長を求める
-				System.out.println(LABEL1);//ラベルを表示
-				int tmpRank = ONE;
-				Student tmpSt = trueStudentList.get(ZERO);
-				for(Student st : trueStudentList) {
-					if(tmpSt.getSumScore() > st.getSumScore()) tmpRank++;//前の人より点が低い場合は順位を加算
-					int tmpLen = (nameMaxLen - st.getName().length()) * 2 + st.getName().length();
-					//この生徒の名前の文字数半角スペースをいくつ足せば最大文字列長と等しくなるか
-					String tmpStr = String.join(FULLSPACE,
-							String.format(DIGIT1 + rankingMaxLen +DIGIT2, tmpRank),
-							String.format(DIGIT3 + tmpLen +DIGIT4, st.getName()));
-					//String.join(delimiter, elements);
-					System.out.print(tmpStr);
-					for(int index = ZERO;index < SUBJECTARRAY.length;index++) {
-						String wkMark = HALFSPACE;//付与するマークを一時的に保存する変数
-						System.out.print(FULLSPACE);
-						if(st.getScore(index) == subjectMaxScores[index]) wkMark = HIGHSCOREMARK;
-						//教科最高点の場合はマーク
-						System.out.print(wkMark);
-						System.out.printf(DIGIT1 + subjectMaxLen[index] +DIGIT2, st.getScore(index));
-						//教科の点数を表示
-					}
-					tmpSt = st;
-					System.out.println();
-				}
-			}
-			System.out.println(LABEL2);
-			if(failStudentList.size() == ZERO) {
-				System.out.println("該当者なし");
-			}else {
-				failStudentList.forEach(st -> System.out.println(st.getName()));
-			}
 		}catch (IOException e) {
-			e.printStackTrace();
-			System.exit(ABNORMAL);
+			// TODO: handle exception
+			System.out.println(E001);
+			System.out.println(I001);
+			System.exit(ABNORMAL);//ファイルが読み込めない場合は異常終了
 		}
+		Student[] failStAr;//再試験者のデータの配列
+		Student[] trueStAr;//合格者の配列
+		int[] subjectMaxScores = new int[SUBJECTNUM];//教科の最高点 インデックスはSUBJECTARRAYと対応
+		int[] subjectMaxLen = new int[SUBJECTNUM];//教科の最高点の桁数 同上
+		failStAr = scoreStArList.stream().filter(st -> st.getReTestFlag(FAILSCORE, ABSENCE)).toArray(Student[]::new);
+		//再試験者を抽出
+		trueStAr = scoreStArList.stream().filter(st -> ! st.getReTestFlag(FAILSCORE, ABSENCE)).toArray(Student[]::new);
+		//合格者を抽出
+		subjectMaxScores = Stream.iterate(ZERO, i -> ++i)//教科ごとの最高得点の桁数を求める
+				.limit(SUBJECTNUM)//教科の数だけ配列インデックス用の数列を生成
+				.map(i -> subjectScoresArray(i, trueStAr))
+				.mapToInt(sal -> Arrays.stream(sal).max().orElse(ZERO))//得られた配列の中から最大値を求める
+				.toArray();
+		subjectMaxLen = Arrays.stream(subjectMaxScores)//教科ごとの最高得点の桁数を求める
+				.map(s -> String.valueOf(s).length())
+				.toArray();
+		if(trueStAr.length > ZERO) { //合格者がいるとき
+			Arrays.sort(trueStAr,Comparator.comparingInt(Student::getSumScore).reversed().thenComparing(Student::getName));
+			int nameMaxLen = Arrays.stream(trueStAr).mapToInt(st -> st.getName().length()).max().orElse(ZERO);
+			//氏名の最大文字列長を求める
+			int rank = ONE;//順位をカウント
+			trueStAr[ZERO].setSumRanking(rank);//先頭は一位
+			for(int index = ONE;index < trueStAr.length;index++) {//順位付けをする
+				rank = trueStAr[index].getSumScore() == trueStAr[index - ONE].getSumScore()
+						? rank : index + ONE;//前の人と点が同じときは同順位、違うときは適切な順位を
+				trueStAr[index].setSumRanking(rank);
+			}
+			int rankingMaxLen =  String.valueOf(rank).length();
+			System.out.println(LABEL1);//ラベルを表示
+			for(Student st : trueStAr) {
+				int tmpLen = (nameMaxLen - st.getName().length()) * TWO + st.getName().length();
+				//この生徒の名前の文字数半角スペースをいくつ足せば最大文字列長と等しくなるか
+				String tmpStr = String.join(FULLSPACE,
+						String.format(DIGIT1 + rankingMaxLen +DIGIT2, st.getSumRanking()),
+						String.format(DIGIT3 + tmpLen +DIGIT4, st.getName()));
+				for(int index = ZERO;index < SUBJECTNUM;index++) {
+					String wkMark = st.getScore(index) == subjectMaxScores[index] ? HIGHSCOREMARK : HALFSPACE;
+					//付与するマークを一時的に保存する変数
+					tmpStr = String.join(FULLSPACE,
+							tmpStr,
+							String.format(wkMark + DIGIT1 + subjectMaxLen[index] +DIGIT2, st.getScore(index)));
+				}
+				System.out.println(tmpStr);
+			}
+		}
+		System.out.println(LABEL2);//再試験者ラベル
+		if(failStAr.length == ZERO) {//再試験者がいないとき
+			System.out.println(LABEL3);
+		}else {
+			Arrays.stream(failStAr).forEach(st -> System.out.println(st.getName()));
+		}
+		System.out.println();
+		System.out.println(I001);
+	}
+	/**
+	 * 教科ごとの得点の配列を取得するメソッド
+	 * @param index 教科インデックス
+	 * @param students //Studentインスタンス
+	 * @return
+	 */
+	public static int[] subjectScoresArray(int index,Student...students) {
+		return Arrays.stream(students).mapToInt(st -> st.getScore(index)).toArray();
 	}
 }
