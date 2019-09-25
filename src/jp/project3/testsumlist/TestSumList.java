@@ -12,28 +12,36 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+/**
+ *
+ * 生徒の試験成績と再試験者を表示するクラス
+ *
+ */
 public class TestSumList {
-	private static final int FAILSCORE = 25;//赤点
-	private static final int ABSENCE = -1;//欠席を表す数値
-	private static final int SUBJECTNUM = 3;//教科数
-	private static final String FILEPATH = "bin/testsum2.txt";//成績ファイルのパス
-	private static final String CHARSET = "MS932";//成績ファイルの文字コード
-	private static final String HALFCOMMA = ",";//成績ファイルの区切り文字
-	private static final String HIGHSCOREMARK = "*";//教科最高点取得者を表す印
-	private static final String HALFSPACE = " ";//半角空白
-	private static final String FULLSPACE = "　";//全角空白
-	private static final String DIGIT1 = "%";//桁揃え用
-	private static final String DIGIT2 = "d";//桁揃え用
-	private static final String DIGIT3 = "%1$-";//文字列揃え用
-	private static final String DIGIT4 = "s";//文字列揃え用
-	private static final String LABEL1 = "【試験成績順位】";//表示用
-	private static final String LABEL2 = "【再試験者】";//表示用
-	private static final String LABEL3 = "該当者なし";//表示用
+	private static final int FAILSCORE = 25;					//赤点
+	private static final int ABSENCE = -1;						//欠席を表す数値
+	private static final int SUBJECTNUM = 3;					//教科数
+	private static final String FILEPATH = "bin/tests.txt";		//成績ファイルのパス
+	private static final String CHARSET = "MS932";				//成績ファイルの文字コード
+	private static final String HALFCOMMA = ",";				//成績ファイルの区切り文字
+	private static final String HIGHSCOREMARK = "*";			//教科最高点取得者を表す印
+	private static final String HALFSPACE = " ";				//半角空白
+	private static final String FULLSPACE = "　";				//全角空白
+	private static final String DIGIT1 = "%";					//桁揃え用
+	private static final String DIGIT2 = "d";					//桁揃え用
+	private static final String DIGIT3 = "%1$-";				//文字列揃え用
+	private static final String DIGIT4 = "s";					//文字列揃え用
+	private static final String LABEL1 = "【試験成績順位】";	//表示用
+	private static final String LABEL2 = "【再試験者】";		//表示用
+	private static final String LABEL3 = "該当者なし";			//表示用
 	/**
 	 * INFOREGIX 不正データを排除する正規表現 得点の範囲も正規表現で表す
 	 */
 	private static final String INFOREGIX = "^[^"+HALFCOMMA+"]+(" + HALFCOMMA +
 												"("+ABSENCE+"|[0-9]|[1-9][0-9]|100)){"+SUBJECTNUM+"}$";
+	/**
+	 * 成績ファイルを読み込み成績順位と再試験者を表示するメソッド
+	 */
 	public static void main(String[] args) {
 		List<Student> scoreStArList = List.of();
 		try(Stream<String> tmpSt = Files.lines(Path.of(FILEPATH), Charset.forName(CHARSET))) {
@@ -57,8 +65,7 @@ public class TestSumList {
 		//再試験者を抽出
 		trueStAr = scoreStArList.stream().filter(st -> ! st.getReTestFlag(FAILSCORE, ABSENCE)).toArray(Student[]::new);
 		//合格者を抽出
-		subjectMaxScores = Stream.iterate(ZERO, i -> ++i)//教科ごとの最高得点の桁数を求める
-				.limit(SUBJECTNUM)//教科の数だけ配列インデックス用の数列を生成
+		subjectMaxScores = Stream.iterate(ZERO,i -> i < SUBJECTNUM ,i -> ++i)//教科ごとの最高得点の桁数を求める
 				.map(i -> subjectScoresArray(i, trueStAr))
 				.mapToInt(sal -> Arrays.stream(sal).max().orElse(ZERO))//得られた配列の中から最大値を求める
 				.toArray();
@@ -107,7 +114,7 @@ public class TestSumList {
 	 * 教科ごとの得点の配列を取得するメソッド
 	 * @param index 教科インデックス
 	 * @param students //Studentインスタンス
-	 * @return
+	 * @return 教科ごとの得点のint型配列
 	 */
 	public static int[] subjectScoresArray(int index,Student...students) {
 		return Arrays.stream(students).mapToInt(st -> st.getScore(index)).toArray();

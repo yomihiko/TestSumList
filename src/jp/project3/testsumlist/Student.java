@@ -3,7 +3,6 @@ package jp.project3.testsumlist;
 import static jp.project3.testsumlist.Define.*;
 
 import java.util.Arrays;
-import java.util.StringJoiner;
 
 /**
  * 生徒個人の成績情報を保持するクラス
@@ -72,22 +71,18 @@ class Student {
 	public boolean getReTestFlag(int failscore,int absence) {
 		return Arrays.stream(scoreArray).anyMatch(st -> st <= failscore || st == absence);
 	}
+	/**
+	 * 教科数を返す
+	 * @return 教科数
+	 */
 	public int getSubjectSize() {
 		return scoreArray.length;
 	}
+	/**
+	 * 全教科の得点を返す
+	 * @return 各教科の得点を格納したint型配列
+	 */
 	public int[] getSubjectScores(){
 		return scoreArray;
 	}
-	@Override
-	public String toString() {//テスト用
-		StringJoiner sj = new StringJoiner(",");
-		sj.add(name);
-		for(int score : scoreArray) {
-			sj.add(String.valueOf(score));
-		}
-		sj.add(String.valueOf(this.getSumScore()));
-		return sj.toString();
-	}
-
-
 }
